@@ -828,6 +828,88 @@ describe("wait_for_reply", () => {
     expect(h.state.logUpdates.at(-1)).toMatchObject({ status: "success" });
   });
 
+  describe("condition branch outcomes reach the root scope", () => {
+    const statuses = () =>
+      h.state.logUpdates.filter((u) => "status" in u).map((u) => u.status);
+
+    function branchThenRoot() {
+      return [
+        step("hii", "condition", 0, contains("Hii")),
+        step("inBranch", "send_message", 0, say("in branch"), { id: "hii", branch: "yes" }),
+        step("atRoot", "send_message", 1, say("at root")),
+      ];
+    }
+
+    it("stops the run and fails the log when a branch step fails", async () => {
+      h.state.steps = branchThenRoot();
+      vi.mocked(engineSendText).mockRejectedValueOnce(new Error("meta down"));
+
+      await trigger("Hii");
+
+      expect(sentTexts()).toEqual(["in branch"]);
+      expect(statuses().at(-1)).toBe("failed");
+      expect(statuses()).not.toContain("success");
+      expect(h.state.logUpdates).toContainEqual(
+        expect.objectContaining({ error_message: "meta down" }),
+      );
+    });
+
+    it("fails through every enclosing branch when a nested branch step fails", async () => {
+      h.state.steps = [
+        step("outer", "condition", 0, contains("Hii")),
+        step("inner", "condition", 0, contains("Hii"), { id: "outer", branch: "yes" }),
+        step("deep", "send_message", 0, say("deep"), { id: "inner", branch: "yes" }),
+        step("afterInner", "send_message", 1, say("after inner"), { id: "outer", branch: "yes" }),
+        step("atRoot", "send_message", 1, say("at root")),
+      ];
+      vi.mocked(engineSendText).mockRejectedValueOnce(new Error("meta down"));
+
+      await trigger("Hii");
+
+      expect(sentTexts()).toEqual(["deep"]);
+      expect(statuses().at(-1)).toBe("failed");
+      expect(statuses()).not.toContain("success");
+    });
+
+    it("leaves the log partial when a branch parks for a reply", async () => {
+      h.state.steps = [
+        step("hii", "condition", 0, contains("Hii")),
+        step("btn", "send_buttons", 0, buttons(true), { id: "hii", branch: "yes" }),
+        step("atRoot", "send_message", 1, say("at root")),
+      ];
+
+      await trigger("Hii");
+
+      expect(engineSendText).not.toHaveBeenCalled();
+      expect(statuses()).toEqual(["partial"]);
+    });
+
+    it("fails the log when a branch step fails after resuming from a reply", async () => {
+      h.state.steps = [
+        step("hii", "condition", 0, contains("Hii")),
+        step("btn", "send_buttons", 0, buttons(true), { id: "hii", branch: "yes" }),
+        step("inBranch", "send_message", 1, say("in branch"), { id: "hii", branch: "yes" }),
+        step("atRoot", "send_message", 1, say("at root")),
+      ];
+      await trigger("Hii");
+      vi.mocked(engineSendText).mockRejectedValueOnce(new Error("meta down"));
+
+      await reply("anything");
+
+      expect(sentTexts()).toEqual(["in branch"]);
+      expect(statuses().at(-1)).toBe("failed");
+    });
+
+    it("still runs the steps after a condition when its branch succeeds", async () => {
+      h.state.steps = branchThenRoot();
+
+      await trigger("Hii");
+
+      expect(sentTexts()).toEqual(["in branch", "at root"]);
+      expect(statuses()).toEqual(["success"]);
+    });
+  });
+
   it("does not resume a run whose 24h deadline has passed", async () => {
     h.state.steps = userMenu();
     await trigger("Hii");
