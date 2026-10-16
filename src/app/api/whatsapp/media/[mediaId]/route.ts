@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
 import { decrypt } from '@/lib/whatsapp/encryption'
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
 
 const t = getT('Api')
@@ -33,6 +34,9 @@ export async function GET(
         { status: 401 }
       )
     }
+
+    const limit = checkRateLimit(`whatsapp-media:${user.id}`, RATE_LIMITS.whatsappMedia)
+    if (!limit.success) return rateLimitResponse(limit)
 
     // Resolve the caller's account_id — whatsapp_config is one-per-
     // account post-multi-user, so a teammate fetching media for a
