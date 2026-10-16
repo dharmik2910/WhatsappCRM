@@ -96,6 +96,21 @@ export function checkRateLimit(
  * Standard 429 response with the headers clients expect (RFC 6585 +
  * draft-ietf-httpapi-ratelimit-headers). Callers just `return` this.
  */
+export function getClientIp(request: Request): string {
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  if (realIp) return realIp;
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    const hops = forwardedFor
+      .split(',')
+      .map((hop) => hop.trim())
+      .filter(Boolean);
+    const proxyAppended = hops[hops.length - 1];
+    if (proxyAppended) return proxyAppended;
+  }
+  return 'unknown';
+}
+
 export function rateLimitResponse(result: RateLimitResult): NextResponse {
   const retryAfterSec = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
   return NextResponse.json(

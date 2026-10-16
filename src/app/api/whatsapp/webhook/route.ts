@@ -1317,10 +1317,7 @@ async function findOrCreateContact(
     ? await findContactByWaUserId(accountId, identity.waUserId)
     : null
 
-  // Fall back to the phone. The shared helper pre-filters in SQL by the
-  // last-8-digit suffix (so we don't pull every contact on every
-  // inbound message) then applies the strict `phonesMatch` in JS on the
-  // small candidate set. The same helper backs the manual contact form
+  // Fall back to the phone. The same helper backs the manual contact form
   // and CSV import, so all three paths agree on what "same number"
   // means (issue #212).
   if (!existingContact && identity.phone) {

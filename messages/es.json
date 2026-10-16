@@ -2329,7 +2329,9 @@
       "contactNotFound": "Contacto no encontrado",
       "tagNotFound": "Etiqueta no encontrada",
       "addFailed": "No se pudo agregar la etiqueta al contacto: {message}",
-      "removeFailed": "No se pudo quitar la etiqueta del contacto: {message}"
+      "removeFailed": "No se pudo quitar la etiqueta del contacto: {message}",
+      "invalidContactId": "El ID del contacto debe ser un UUID",
+      "invalidTagId": "El ID de la etiqueta debe ser un UUID"
     },
     "auth": {
       "unauthorized": "No autorizado",
