@@ -503,6 +503,10 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<ScopeOutcome> {
         if (branchOutcome === 'suspended') {
           return suspend(args, results, errorMessage)
         }
+        if (branchOutcome === 'failed') {
+          status = 'failed'
+          break
+        }
         continue
       }
 
