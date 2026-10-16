@@ -614,13 +614,15 @@ function waitsForReply(step: AutomationStep): boolean {
  * is superseded, so a reply can never resume a stale menu.
  */
 async function parkForReply(step: AutomationStep, args: ExecuteArgs): Promise<void> {
+  if (!args.contactId) throw new Error(tErr('needsContact', { step: step.step_type }))
   const db = supabaseAdmin()
-  await db
+  const { error: supErr } = await db
     .from('automation_pending_executions')
     .update({ status: 'superseded' })
     .eq('account_id', args.automation.account_id)
     .eq('contact_id', args.contactId)
     .eq('status', 'awaiting_reply')
+  if (supErr) throw new Error(tErr('parkForReplyFailed', { message: supErr.message }))
   const { error } = await db.from('automation_pending_executions').insert({
     automation_id: args.automation.id,
     account_id: args.automation.account_id,

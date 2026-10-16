@@ -17,6 +17,7 @@ const h = vi.hoisted(() => ({
     logUpdates: [] as Record<string, unknown>[],
     // automation_pending_executions rows, mutated in place by updates.
     pending: [] as Record<string, unknown>[],
+    pendingUpdateError: null as { message: string } | null,
   },
 }));
 
@@ -57,6 +58,9 @@ vi.mock("./admin-client", () => {
         };
         state.pending.push(row);
         return { data: row, error: null };
+      }
+      if (type === "update" && state.pendingUpdateError) {
+        return { data: null, error: state.pendingUpdateError };
       }
       const hit = state.pending.filter((r) => matches(r, ops.filters));
       if (type === "update") {
@@ -182,6 +186,7 @@ beforeEach(() => {
   h.state.logInserts = [];
   h.state.logUpdates = [];
   h.state.pending = [];
+  h.state.pendingUpdateError = null;
   vi.clearAllMocks();
 });
 
@@ -841,6 +846,40 @@ describe("wait_for_reply", () => {
     await trigger("Hii");
 
     expect(h.state.pending.map((r) => r.status)).toEqual(["superseded", "awaiting_reply"]);
+  });
+
+  it("fails the run instead of parking when there is no contact (issue #642)", async () => {
+    h.state.automations = [menuAutomation({ trigger_type: "time_based" })];
+    h.state.steps = userMenu();
+
+    await runAutomationsForTrigger({
+      accountId: ACCOUNT,
+      triggerType: "time_based",
+      contactId: null,
+      context: { conversation_id: "conv1" },
+    });
+
+    expect(engineSendInteractive).not.toHaveBeenCalled();
+    expect(engineSendText).not.toHaveBeenCalled();
+    expect(h.state.pending).toHaveLength(0);
+    expect(h.state.logUpdates.at(-1)).toMatchObject({
+      status: "failed",
+      error_message: "send_buttons needs a contact",
+    });
+  });
+
+  it("fails the run when superseding the older wait errors (issue #642)", async () => {
+    h.state.steps = userMenu();
+    h.state.pendingUpdateError = { message: "db down" };
+
+    await trigger("Hii");
+
+    expect(h.state.pending).toHaveLength(0);
+    expect(engineSendText).not.toHaveBeenCalled();
+    expect(h.state.logUpdates.at(-1)).toMatchObject({
+      status: "failed",
+      error_message: "could not park for reply: db down",
+    });
   });
 
   it("releases the message when the automation was paused while waiting", async () => {
