@@ -133,6 +133,15 @@ BEGIN
       'idx_automation_pending_awaiting_reply is missing — migration 045 did not apply';
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND column_default LIKE '%uuid_generate_v%'
+  ) THEN
+    RAISE EXCEPTION
+      'a public column default still calls uuid-ossp; use gen_random_uuid() so a fresh hosted db push does not hit 42883';
+  END IF;
+
   RAISE NOTICE 'schema verification passed';
 END
 $$;
