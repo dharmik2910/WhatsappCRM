@@ -22,6 +22,7 @@ import {
 } from '@/lib/whatsapp/waba-pairing'
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
 import { resolveVerifyTokenForSave } from '@/lib/whatsapp/verify-token'
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
 
 const t = getT('Api')
@@ -268,6 +269,9 @@ export async function POST(request: Request) {
         { status: 403 },
       )
     }
+
+    const limit = checkRateLimit(`whatsapp-admin:${user.id}`, RATE_LIMITS.whatsappAdmin)
+    if (!limit.success) return rateLimitResponse(limit)
 
     const body = await request.json()
     const { phone_number_id, waba_id, access_token, verify_token, pin } = body

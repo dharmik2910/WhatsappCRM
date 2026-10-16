@@ -176,6 +176,9 @@ export const RATE_LIMITS = {
    *  capping a stampede; excess inbounds simply don't get an auto-reply
    *  (they still land in the inbox for a human). */
   aiAutoReplyAccount: { limit: 30, windowMs: 60_000 },
+  whatsappAdmin: { limit: 30, windowMs: 60_000 },
+  whatsappMedia: { limit: 240, windowMs: 60_000 },
+  automationTrigger: { limit: 30, windowMs: 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't
