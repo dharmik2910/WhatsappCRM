@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
     // automation_pending_executions rows, mutated in place by updates.
     pending: [] as Record<string, unknown>[],
     pendingUpdateError: null as { message: string } | null,
+    pendingInsertError: null as { message: string } | null,
   },
 }));
 
@@ -36,6 +37,7 @@ vi.mock("./admin-client", () => {
       if (op === "gte") return (cell as number | string) >= (v as number | string);
       if (op === "gt") return (cell as number | string) > (v as number | string);
       if (op === "lte") return (cell as number | string) <= (v as number | string);
+      if (op === "lt") return cell !== null && (cell as number | string) < (v as number | string);
       return true;
     });
   }
@@ -50,6 +52,9 @@ vi.mock("./admin-client", () => {
     const { table, type } = ops;
     const one = <T,>(rows: T[]) => (ops.single ? rows[0] ?? null : rows);
     if (table === "automation_pending_executions") {
+      if (type === "insert" && state.pendingInsertError) {
+        return { data: null, error: state.pendingInsertError };
+      }
       if (type === "insert") {
         const row = {
           id: `p${state.pending.length + 1}`,
@@ -136,6 +141,7 @@ vi.mock("./admin-client", () => {
       gte: (k: string, v: unknown) => (ops.filters.push(["gte", k, v]), b),
       gt: (k: string, v: unknown) => (ops.filters.push(["gt", k, v]), b),
       lte: (k: string, v: unknown) => (ops.filters.push(["lte", k, v]), b),
+      lt: (k: string, v: unknown) => (ops.filters.push(["lt", k, v]), b),
       order: () => b,
       limit: () => b,
       single: () => ((ops.single = true), Promise.resolve(resolve(ops))),
@@ -164,8 +170,12 @@ vi.mock("./meta-send", () => ({
 }));
 
 import {
+  STALLED_CLAIM_MS,
+  claimPendingExecution,
   expireAwaitingReplies,
+  requeueStalledExecutions,
   resumeAwaitingReply,
+  resumePendingExecution,
   runAutomationsForTrigger,
   triggerMatches,
 } from "./engine";
@@ -187,6 +197,7 @@ beforeEach(() => {
   h.state.logUpdates = [];
   h.state.pending = [];
   h.state.pendingUpdateError = null;
+  h.state.pendingInsertError = null;
   vi.clearAllMocks();
 });
 
@@ -1015,5 +1026,201 @@ describe("wait_for_reply", () => {
     expect(expired).toBe(1);
     expect(h.state.pending[0].status).toBe("expired");
     expect(h.state.logUpdates.at(-1)).toEqual({ error_message: "no reply within 24h" });
+  });
+
+  describe("integrity of parked runs", () => {
+    const wait = { amount: 1, unit: "hours" };
+
+    function resumeDue(index = 0) {
+      const row = h.state.pending[index];
+      return resumePendingExecution({
+        id: row.id as string,
+        automation_id: row.automation_id as string,
+        account_id: ACCOUNT,
+        user_id: "u1",
+        contact_id: (row.contact_id as string | null) ?? null,
+        log_id: (row.log_id as string | null) ?? null,
+        parent_step_id: (row.parent_step_id as string | null) ?? null,
+        branch: (row.branch as "yes" | "no" | null) ?? null,
+        next_step_position: row.next_step_position as number,
+        parked_step_id: (row.parked_step_id as string | null) ?? null,
+        context: (row.context as Record<string, unknown>) ?? {},
+      });
+    }
+
+    function waitInBranch() {
+      return [
+        step("first", "send_message", 0, say("first")),
+        step("hii", "condition", 1, contains("Hii")),
+        step("wait", "wait", 0, wait, { id: "hii", branch: "yes" }),
+        step("afterWait", "send_message", 1, say("after wait"), { id: "hii", branch: "yes" }),
+      ];
+    }
+
+    it("records which step parked the run", async () => {
+      h.state.steps = waitInBranch();
+      await trigger("Hii");
+
+      expect(h.state.pending[0]).toMatchObject({
+        status: "pending",
+        parked_step_id: "wait",
+        parent_step_id: "hii",
+        branch: "yes",
+      });
+    });
+
+    it("expires a time wait when the automation was paused", async () => {
+      h.state.steps = waitInBranch();
+      await trigger("Hii");
+      vi.mocked(engineSendText).mockClear();
+      h.state.automations = [menuAutomation({ is_active: false })];
+
+      await resumeDue();
+
+      expect(engineSendText).not.toHaveBeenCalled();
+      expect(h.state.pending[0].status).toBe("expired");
+      expect(h.state.logUpdates.at(-1)).toEqual({
+        error_message: "automation paused while waiting",
+      });
+    });
+
+    it("expires a time wait whose step was removed, instead of re-running root steps", async () => {
+      h.state.steps = waitInBranch();
+      await trigger("Hii");
+      vi.mocked(engineSendText).mockClear();
+      h.state.steps = h.state.steps.filter((s) => s.id === "first");
+
+      await resumeDue();
+
+      expect(engineSendText).not.toHaveBeenCalled();
+      expect(h.state.pending[0].status).toBe("expired");
+      expect(h.state.logUpdates.at(-1)).toEqual({
+        error_message: "the step this run was waiting at was removed or moved out of its branch",
+      });
+    });
+
+    it("expires a legacy branch row whose parent pointer was nulled", async () => {
+      h.state.steps = waitInBranch();
+      await trigger("Hii");
+      vi.mocked(engineSendText).mockClear();
+      Object.assign(h.state.pending[0], { parked_step_id: null, parent_step_id: null });
+
+      await resumeDue();
+
+      expect(engineSendText).not.toHaveBeenCalled();
+      expect(h.state.pending[0].status).toBe("expired");
+    });
+
+    it("resumes after the parked step's current position when steps were reordered", async () => {
+      h.state.steps = waitInBranch();
+      await trigger("Hii");
+      vi.mocked(engineSendText).mockClear();
+      h.state.steps = [
+        step("first", "send_message", 0, say("first")),
+        step("hii", "condition", 1, contains("Hii")),
+        step("inserted", "send_message", 0, say("inserted before"), { id: "hii", branch: "yes" }),
+        step("wait", "wait", 1, wait, { id: "hii", branch: "yes" }),
+        step("afterWait", "send_message", 2, say("after wait"), { id: "hii", branch: "yes" }),
+      ];
+
+      await resumeDue();
+
+      expect(sentTexts()).toEqual(["after wait"]);
+      expect(h.state.pending[0].status).toBe("done");
+    });
+
+    it("releases a reply whose waiting step was removed", async () => {
+      h.state.steps = userMenu();
+      await trigger("Hii");
+      h.state.steps = h.state.steps.filter((s) => s.id !== "btn");
+
+      const consumed = await reply("Website", "web");
+
+      expect(consumed).toBe(false);
+      expect(engineSendText).not.toHaveBeenCalled();
+      expect(h.state.pending[0].status).toBe("expired");
+    });
+
+    it("fails the log when the time wait cannot be scheduled", async () => {
+      h.state.steps = waitInBranch();
+      h.state.pendingInsertError = { message: "db down" };
+
+      await trigger("Hii");
+
+      expect(sentTexts()).toEqual(["first"]);
+      const statuses = h.state.logUpdates.filter((u) => "status" in u).map((u) => u.status);
+      expect(statuses.at(-1)).toBe("failed");
+      expect(h.state.logUpdates).toContainEqual(
+        expect.objectContaining({ error_message: "could not schedule the wait: db down" }),
+      );
+    });
+
+    it("stamps claimed_at when claiming and requeues claims older than the stall window", async () => {
+      h.state.steps = waitInBranch();
+      await trigger("Hii");
+      const claimTime = new Date("2026-10-16T10:00:00Z");
+
+      expect(await claimPendingExecution("p1", claimTime)).toBe(true);
+      expect(await claimPendingExecution("p1", claimTime)).toBe(false);
+      expect(h.state.pending[0]).toMatchObject({
+        status: "running",
+        claimed_at: claimTime.toISOString(),
+      });
+
+      const early = new Date(claimTime.getTime() + STALLED_CLAIM_MS - 1000);
+      expect(await requeueStalledExecutions(early)).toBe(0);
+      expect(h.state.pending[0].status).toBe("running");
+
+      const late = new Date(claimTime.getTime() + STALLED_CLAIM_MS + 1000);
+      expect(await requeueStalledExecutions(late)).toBe(1);
+      expect(h.state.pending[0]).toMatchObject({ status: "pending", claimed_at: null });
+    });
+
+    it("never requeues a reply run claimed by the webhook", async () => {
+      h.state.pending.push({ id: "r1", status: "running", claimed_at: null });
+
+      expect(await requeueStalledExecutions(new Date(Date.now() + 2 * STALLED_CLAIM_MS))).toBe(0);
+      expect(h.state.pending[0].status).toBe("running");
+    });
+  });
+
+  describe("condition values", () => {
+    it("treats an empty message_content value as no match", async () => {
+      h.state.steps = [
+        step("cond", "condition", 0, contains("")),
+        step("yes1", "send_message", 0, say("yes"), { id: "cond", branch: "yes" }),
+        step("no1", "send_message", 0, say("no"), { id: "cond", branch: "no" }),
+      ];
+
+      await trigger("anything");
+
+      expect(sentTexts()).toEqual(["no"]);
+    });
+
+    it("evaluates time_of_day in the condition's time zone", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-10-16T16:30:00Z"));
+      try {
+        const window = (timezone?: string) => ({
+          subject: "time_of_day",
+          operand: "18:00-09:00",
+          ...(timezone ? { timezone } : {}),
+        });
+        const branchSteps = (cfg: Record<string, unknown>) => [
+          step("cond", "condition", 0, cfg),
+          step("yes1", "send_message", 0, say("closed"), { id: "cond", branch: "yes" }),
+          step("no1", "send_message", 0, say("open"), { id: "cond", branch: "no" }),
+        ];
+
+        h.state.steps = branchSteps(window("Europe/Vilnius"));
+        await trigger("hi");
+        h.state.steps = branchSteps(window());
+        await trigger("hi");
+
+        expect(sentTexts()).toEqual(["closed", "open"]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });
