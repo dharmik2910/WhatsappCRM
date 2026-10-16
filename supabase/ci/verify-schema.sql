@@ -56,10 +56,17 @@ BEGIN
   -- plain replay can't catch it). Assert the qualified form is what's
   -- actually installed.
   IF pg_get_functiondef(
-       'public.create_broadcast_with_recipients(uuid,uuid,text,text,text,integer,uuid[],jsonb[])'::regprocedure
+       'public.create_broadcast_with_recipients(uuid,uuid,text,text,text,integer,uuid[],jsonb)'::regprocedure
      ) NOT LIKE '%RETURNING id, broadcast_recipients.contact_id%' THEN
     RAISE EXCEPTION
       'create_broadcast_with_recipients still has the ambiguous RETURNING — migration 041 did not apply';
+  END IF;
+
+  IF to_regprocedure(
+       'public.create_broadcast_with_recipients(uuid,uuid,text,text,text,integer,uuid[],jsonb[])'
+     ) IS NOT NULL THEN
+    RAISE EXCEPTION
+      'the JSONB[] overload of create_broadcast_with_recipients still exists — migration 049 did not apply';
   END IF;
 
   -- The failure-reason columns (042) are only ever written by the

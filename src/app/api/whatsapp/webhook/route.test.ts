@@ -38,7 +38,7 @@ const h = vi.hoisted(() => ({
     contactUpdates: [] as Record<string, unknown>[],
     /** Patches applied to `messages` by a status webhook (#535). */
     messageUpdates: [] as Record<string, unknown>[],
-    /** Row the status webhook's broadcast_recipients lookup resolves. */
+    /** broadcast_recipients row the status webhook targets. */
     broadcastRecipient: null as { id: string; status: string } | null,
     /** Patches applied to that broadcast_recipients row. */
     recipientUpdates: [] as Record<string, unknown>[],
@@ -93,32 +93,32 @@ vi.mock('@supabase/supabase-js', () => ({
             }),
           }
         case 'broadcast_recipients':
-          // Two chains land here:
-          //   flagBroadcastReplyIfAny: select().eq().eq().in().order().limit()
-          //   handleStatusUpdate:      select().eq().maybeSingle(), then
-          //                            update().eq()
           return {
             select: () => ({
               eq: () => ({
                 eq: () => ({
-                  in: () => ({
-                    order: () => ({
-                      limit: () =>
-                        Promise.resolve({ data: [], error: null }),
-                    }),
+                  order: () => ({
+                    limit: () =>
+                      Promise.resolve({ data: [], error: null }),
                   }),
                 }),
-                maybeSingle: () =>
-                  Promise.resolve({
-                    data: h.state.broadcastRecipient,
-                    error: null,
-                  }),
               }),
             }),
-            update: (patch: Record<string, unknown>) => {
-              h.state.recipientUpdates.push(patch)
-              return { eq: () => Promise.resolve({ error: null }) }
-            },
+            update: (patch: Record<string, unknown>) => ({
+              eq: () => ({
+                in: (_column: string, allowed: string[]) => ({
+                  select: () => {
+                    const row = h.state.broadcastRecipient
+                    const matches = !!row && allowed.includes(row.status)
+                    if (matches) h.state.recipientUpdates.push(patch)
+                    return Promise.resolve({
+                      data: matches ? [{ id: row!.id }] : [],
+                      error: null,
+                    })
+                  },
+                }),
+              }),
+            }),
           }
         case 'contacts':
           // Three chains land here, all from findOrCreateContact:
@@ -1013,6 +1013,19 @@ describe('status webhook: failed statuses keep Meta\'s reason (#535)', () => {
     expect(h.state.recipientUpdates).toHaveLength(1)
     expect(h.state.recipientUpdates[0]).not.toHaveProperty('error_message')
     expect(h.state.recipientUpdates[0]).not.toHaveProperty('error_code')
+  })
+
+  it('a late delivered status never regresses a recipient that is already read', async () => {
+    h.state.broadcastRecipient = { id: 'rec-1', status: 'read' }
+    await runStatusWebhook({
+      id: 'wamid.OUT1',
+      status: 'delivered',
+      timestamp: '1700000100',
+      recipient_id: '15551230000',
+    })
+
+    expect(h.state.messageUpdates).toEqual([{ status: 'delivered' }])
+    expect(h.state.recipientUpdates).toHaveLength(0)
   })
 })
 
