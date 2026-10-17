@@ -24,8 +24,8 @@ export function parseInboxFilter(raw: string | null | undefined): InboxFilter {
 
 export function isAwaitingReply(c: Conversation): boolean {
   if (c.status === "closed" || !c.last_inbound_at) return false;
-  if (!c.last_outbound_at) return true;
-  return new Date(c.last_outbound_at).getTime() < new Date(c.last_inbound_at).getTime();
+  if (!c.last_reply_at) return true;
+  return new Date(c.last_reply_at).getTime() < new Date(c.last_inbound_at).getTime();
 }
 
 export function isWindowClosing(c: Conversation, now: number): boolean {

@@ -94,13 +94,18 @@ export interface PipelineStageStat {
   totalValue: number
 }
 
-export interface OverviewPipeline {
-  pipelines: { id: string; name: string }[]
-  stages: PipelineStageStat[]
+export interface PipelineStats {
+  pipelineId: string
   won: number
   lost: number
   avgDaysToWin: number | null
   idleDeals: number
+}
+
+export interface OverviewPipeline {
+  pipelines: { id: string; name: string }[]
+  stages: PipelineStageStat[]
+  stats: PipelineStats[]
 }
 
 export interface LatestBroadcast {

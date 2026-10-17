@@ -37,7 +37,8 @@ export function PipelineCard({
   const maxValue = Math.max(1, ...stages.map((s) => s.totalValue))
   const openValue = stages.reduce((sum, s) => sum + s.totalValue, 0)
   const openDeals = stages.reduce((sum, s) => sum + s.dealCount, 0)
-  const winRate = data ? ratio(data.pipeline.won, data.pipeline.won + data.pipeline.lost) : null
+  const stats = data?.pipeline.stats.find((s) => s.pipelineId === pipelineId) ?? null
+  const winRate = stats ? ratio(stats.won, stats.won + stats.lost) : null
   const pipelineName = pipelines.find((p) => p.id === pipelineId)?.name
 
   return (
@@ -108,19 +109,19 @@ export function PipelineCard({
               <span>
                 {t('avgToWin')}{' '}
                 <b className="font-semibold text-foreground tabular-nums">
-                  {data.pipeline.avgDaysToWin == null
+                  {stats?.avgDaysToWin == null
                     ? t('none')
-                    : t('days', { count: Math.max(1, Math.round(data.pipeline.avgDaysToWin)) })}
+                    : t('days', { count: Math.max(1, Math.round(stats.avgDaysToWin)) })}
                 </b>
               </span>
             </div>
-            {data.pipeline.idleDeals > 0 ? (
+            {stats && stats.idleDeals > 0 ? (
               <Link
                 href="/pipelines"
                 className="flex items-center gap-1.5 text-status-serious hover:underline"
               >
                 <AlertTriangle className="size-3.5" aria-hidden />
-                {t('idle', { count: data.pipeline.idleDeals })}
+                {t('idle', { count: stats.idleDeals })}
               </Link>
             ) : null}
           </div>

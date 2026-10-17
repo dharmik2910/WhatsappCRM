@@ -35,11 +35,11 @@ describe("parseInboxFilter", () => {
 describe("isAwaitingReply", () => {
   it("is true when the customer spoke last", () => {
     expect(isAwaitingReply(conv("a", { last_inbound_at: ago(10) }))).toBe(true);
-    expect(isAwaitingReply(conv("b", { last_inbound_at: ago(10), last_outbound_at: ago(20) }))).toBe(true);
+    expect(isAwaitingReply(conv("b", { last_inbound_at: ago(10), last_reply_at: ago(20) }))).toBe(true);
   });
 
   it("is false once someone replied, or the chat is closed", () => {
-    expect(isAwaitingReply(conv("a", { last_inbound_at: ago(20), last_outbound_at: ago(10) }))).toBe(false);
+    expect(isAwaitingReply(conv("a", { last_inbound_at: ago(20), last_reply_at: ago(10) }))).toBe(false);
     expect(isAwaitingReply(conv("b", { status: "closed", last_inbound_at: ago(10) }))).toBe(false);
     expect(isAwaitingReply(conv("c"))).toBe(false);
   });
@@ -59,7 +59,7 @@ describe("isWindowClosing", () => {
 
   it("ignores chats that already got a reply", () => {
     expect(
-      isWindowClosing(conv("a", { last_inbound_at: ago(23 * 60), last_outbound_at: ago(60) }), NOW),
+      isWindowClosing(conv("a", { last_inbound_at: ago(23 * 60), last_reply_at: ago(60) }), NOW),
     ).toBe(false);
   });
 });
@@ -68,7 +68,7 @@ describe("applyInboxFilter", () => {
   const list = [
     conv("recent", { last_inbound_at: ago(5) }),
     conv("old", { last_inbound_at: ago(90), assigned_agent_id: "agent-1" }),
-    conv("answered", { last_inbound_at: ago(60), last_outbound_at: ago(30) }),
+    conv("answered", { last_inbound_at: ago(60), last_reply_at: ago(30) }),
     conv("pending", { status: "pending", assigned_agent_id: "agent-1" }),
     conv("unread", { unread_count: 2, assigned_agent_id: "agent-1" }),
   ];

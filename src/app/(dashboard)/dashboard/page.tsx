@@ -114,6 +114,7 @@ function DashboardPageInner() {
     (next: OverviewRange) => {
       const params = new URLSearchParams(searchParams.toString())
       params.set('range', String(next))
+      setFailed(false)
       router.replace(`/dashboard?${params.toString()}`, { scroll: false })
     },
     [router, searchParams],
@@ -129,7 +130,7 @@ function DashboardPageInner() {
     [overview, now],
   )
 
-  if (failed && !overview) {
+  if (failed && !data) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
         <p className="text-sm text-muted-foreground">{t('loadFailed')}</p>

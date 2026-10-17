@@ -147,14 +147,27 @@ export async function getPhoneNumberHealth(
   args: VerifyPhoneNumberArgs
 ): Promise<MetaPhoneHealth> {
   const { phoneNumberId, accessToken } = args
-  const url = `${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,quality_rating,whatsapp_business_manager_messaging_limit`
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
+  const headers = { Authorization: `Bearer ${accessToken}` }
+  const [response, limitResponse] = await Promise.all([
+    fetch(`${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,quality_rating`, { headers }),
+    fetch(`${META_API_BASE}/${phoneNumberId}?fields=whatsapp_business_manager_messaging_limit`, { headers }).catch(
+      () => null
+    ),
+  ])
   if (!response.ok) {
     await throwMetaError(response, `Meta API error: ${response.status}`)
   }
-  return response.json()
+  const health: MetaPhoneHealth = await response.json()
+  if (limitResponse?.ok) {
+    const limit = (await limitResponse.json().catch(() => null)) as Pick<
+      MetaPhoneHealth,
+      'whatsapp_business_manager_messaging_limit'
+    > | null
+    if (limit?.whatsapp_business_manager_messaging_limit) {
+      health.whatsapp_business_manager_messaging_limit = limit.whatsapp_business_manager_messaging_limit
+    }
+  }
+  return health
 }
 
 // ============================================================

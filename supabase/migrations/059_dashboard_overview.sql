@@ -9,7 +9,7 @@ ALTER TABLE accounts
 
 ALTER TABLE conversations
   ADD COLUMN IF NOT EXISTS last_inbound_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS last_outbound_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS last_reply_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 
 ALTER TABLE deals
@@ -48,15 +48,16 @@ WHERE m.conversation_id = c.id
   AND c.last_inbound_at IS NULL;
 
 UPDATE conversations c
-SET last_outbound_at = m.latest
+SET last_reply_at = m.latest
 FROM (
   SELECT conversation_id, max(created_at) AS latest
   FROM messages
-  WHERE sender_type <> 'customer'
+  WHERE (sender_type = 'agent' OR ai_generated)
+    AND status <> 'failed'
   GROUP BY conversation_id
 ) m
 WHERE m.conversation_id = c.id
-  AND c.last_outbound_at IS NULL;
+  AND c.last_reply_at IS NULL;
 
 UPDATE conversations
 SET closed_at = updated_at
@@ -78,13 +79,27 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NEW.sender_type = 'customer' THEN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.sender_type = 'customer' THEN
+      UPDATE conversations
+      SET last_inbound_at = GREATEST(COALESCE(last_inbound_at, NEW.created_at), NEW.created_at)
+      WHERE id = NEW.conversation_id;
+    ELSIF (NEW.sender_type = 'agent' OR NEW.ai_generated) AND NEW.status IS DISTINCT FROM 'failed' THEN
+      UPDATE conversations
+      SET last_reply_at = GREATEST(COALESCE(last_reply_at, NEW.created_at), NEW.created_at)
+      WHERE id = NEW.conversation_id;
+    END IF;
+  ELSIF NEW.status = 'failed'
+    AND OLD.status IS DISTINCT FROM 'failed'
+    AND (NEW.sender_type = 'agent' OR NEW.ai_generated) THEN
     UPDATE conversations
-    SET last_inbound_at = GREATEST(COALESCE(last_inbound_at, NEW.created_at), NEW.created_at)
-    WHERE id = NEW.conversation_id;
-  ELSE
-    UPDATE conversations
-    SET last_outbound_at = GREATEST(COALESCE(last_outbound_at, NEW.created_at), NEW.created_at)
+    SET last_reply_at = (
+      SELECT max(m.created_at)
+      FROM messages m
+      WHERE m.conversation_id = NEW.conversation_id
+        AND (m.sender_type = 'agent' OR m.ai_generated)
+        AND m.status <> 'failed'
+    )
     WHERE id = NEW.conversation_id;
   END IF;
   RETURN NULL;
@@ -96,7 +111,7 @@ REVOKE ALL ON FUNCTION public.track_conversation_message_times() FROM PUBLIC, an
 
 DROP TRIGGER IF EXISTS messages_track_conversation_times ON messages;
 CREATE TRIGGER messages_track_conversation_times
-  AFTER INSERT ON messages
+  AFTER INSERT OR UPDATE OF status ON messages
   FOR EACH ROW EXECUTE FUNCTION public.track_conversation_message_times();
 
 CREATE OR REPLACE FUNCTION public.stamp_conversation_closed_at()
@@ -186,8 +201,13 @@ BEGIN
     RAISE EXCEPTION 'p_days must be one of 1, 7, 30, 90' USING ERRCODE = '22023';
   END IF;
 
-  IF p_tz IS NOT NULL AND EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = p_tz) THEN
-    v_tz := p_tz;
+  IF p_tz IS NOT NULL THEN
+    BEGIN
+      PERFORM v_now AT TIME ZONE p_tz;
+      v_tz := p_tz;
+    EXCEPTION WHEN invalid_parameter_value THEN
+      v_tz := 'UTC';
+    END;
   END IF;
 
   v_start := (date_trunc('day', v_now AT TIME ZONE v_tz) - make_interval(days => p_days - 1)) AT TIME ZONE v_tz;
@@ -212,13 +232,13 @@ BEGIN
         FROM messages m
         WHERE m.conversation_id = c.id
           AND m.sender_type = 'customer'
-          AND m.created_at > COALESCE(c.last_outbound_at, '-infinity'::timestamptz)
+          AND m.created_at > COALESCE(c.last_reply_at, '-infinity'::timestamptz)
       ), c.last_inbound_at) AS waiting_since
     FROM conversations c
     WHERE c.account_id = v_account
       AND c.status <> 'closed'
       AND c.last_inbound_at IS NOT NULL
-      AND (c.last_outbound_at IS NULL OR c.last_outbound_at < c.last_inbound_at)
+      AND (c.last_reply_at IS NULL OR c.last_reply_at < c.last_inbound_at)
   ),
   failed AS (
     SELECT m.id, m.conversation_id, m.content_text, m.error_code, m.error_title, m.created_at,
@@ -276,36 +296,51 @@ BEGIN
   ) INTO v_attention;
 
   WITH msgs AS (
-    SELECT
-      m.conversation_id,
-      m.sender_type,
-      m.created_at,
-      lag(m.sender_type) OVER (PARTITION BY m.conversation_id ORDER BY m.created_at, m.id) AS prev_sender
+    SELECT m.id, m.conversation_id, m.sender_type, m.ai_generated, m.status, m.created_at
     FROM messages m
     JOIN conversations c ON c.id = m.conversation_id
     WHERE c.account_id = v_account
       AND m.created_at >= v_prev_start - interval '1 day'
   ),
+  streams AS (
+    SELECT
+      'human'::text AS kind,
+      conversation_id,
+      created_at,
+      sender_type = 'customer' AS is_customer,
+      lag(sender_type = 'customer') OVER (PARTITION BY conversation_id ORDER BY created_at, id) AS prev_customer
+    FROM msgs
+    WHERE sender_type = 'customer' OR (sender_type = 'agent' AND status <> 'failed')
+    UNION ALL
+    SELECT
+      'ai'::text,
+      conversation_id,
+      created_at,
+      sender_type = 'customer',
+      lag(sender_type = 'customer') OVER (PARTITION BY conversation_id ORDER BY created_at, id)
+    FROM msgs
+    WHERE sender_type = 'customer' OR (ai_generated AND status <> 'failed')
+  ),
   turns AS (
     SELECT
-      t.created_at AS asked_at,
-      r.sender_type AS reply_sender,
+      s.kind,
+      s.created_at AS asked_at,
       r.sender_id AS reply_agent,
-      r.ai_generated AS reply_ai,
-      extract(epoch FROM r.created_at - t.created_at) / 60.0 AS minutes
-    FROM msgs t
+      extract(epoch FROM r.created_at - s.created_at) / 60.0 AS minutes
+    FROM streams s
     CROSS JOIN LATERAL (
-      SELECT m2.sender_type, m2.sender_id, m2.ai_generated, m2.created_at
+      SELECT m2.sender_id, m2.created_at
       FROM messages m2
-      WHERE m2.conversation_id = t.conversation_id
-        AND m2.created_at > t.created_at
-        AND m2.sender_type <> 'customer'
+      WHERE m2.conversation_id = s.conversation_id
+        AND m2.created_at > s.created_at
+        AND m2.status <> 'failed'
+        AND CASE WHEN s.kind = 'human' THEN m2.sender_type = 'agent' ELSE m2.ai_generated END
       ORDER BY m2.created_at, m2.id
       LIMIT 1
     ) r
-    WHERE t.sender_type = 'customer'
-      AND t.prev_sender IS DISTINCT FROM 'customer'
-      AND t.created_at >= v_prev_start
+    WHERE s.is_customer
+      AND s.prev_customer IS NOT TRUE
+      AND s.created_at >= v_prev_start
   ),
   members AS (
     SELECT p.user_id, p.full_name, p.avatar_url, p.account_role
@@ -315,11 +350,11 @@ BEGIN
   SELECT jsonb_build_object(
     'medianHuman', (
       SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY minutes)
-      FROM turns WHERE reply_sender = 'agent' AND asked_at >= v_start
+      FROM turns WHERE kind = 'human' AND asked_at >= v_start
     ),
     'medianHumanPrevious', (
       SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY minutes)
-      FROM turns WHERE reply_sender = 'agent' AND asked_at >= v_prev_start AND asked_at < v_prev_end
+      FROM turns WHERE kind = 'human' AND asked_at >= v_prev_start AND asked_at < v_prev_end
     ),
     'team', COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
@@ -335,12 +370,12 @@ BEGIN
         ),
         'replies', (
           SELECT count(*) FROM turns
-          WHERE reply_sender = 'agent' AND reply_agent = mb.user_id AND asked_at >= v_start
+          WHERE kind = 'human' AND reply_agent = mb.user_id AND asked_at >= v_start
         ),
         'medianMinutes', (
           SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY minutes)
           FROM turns
-          WHERE reply_sender = 'agent' AND reply_agent = mb.user_id AND asked_at >= v_start
+          WHERE kind = 'human' AND reply_agent = mb.user_id AND asked_at >= v_start
         )
       ) ORDER BY mb.full_name NULLS LAST)
       FROM members mb
@@ -355,7 +390,7 @@ BEGIN
       ),
       'medianMinutes', (
         SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY minutes)
-        FROM turns WHERE reply_sender = 'bot' AND reply_ai AND asked_at >= v_start
+        FROM turns WHERE kind = 'ai' AND asked_at >= v_start
       )
     )
   ) INTO v_replies;
@@ -500,22 +535,29 @@ BEGIN
       JOIN pipelines pl ON pl.id = s.pipeline_id
       WHERE pl.account_id = v_account
     ), '[]'::jsonb),
-    'won', (
-      SELECT count(*) FROM deals
-      WHERE account_id = v_account AND status = 'won' AND closed_at >= v_start
-    ),
-    'lost', (
-      SELECT count(*) FROM deals
-      WHERE account_id = v_account AND status = 'lost' AND closed_at >= v_start
-    ),
-    'avgDaysToWin', (
-      SELECT avg(extract(epoch FROM closed_at - created_at) / 86400.0) FROM deals
-      WHERE account_id = v_account AND status = 'won' AND closed_at >= v_start
-    ),
-    'idleDeals', (
-      SELECT count(*) FROM deals
-      WHERE account_id = v_account AND status = 'open' AND updated_at < v_now - interval '7 days'
-    )
+    'stats', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'pipelineId', pl.id,
+        'won', (
+          SELECT count(*) FROM deals d
+          WHERE d.pipeline_id = pl.id AND d.status = 'won' AND d.closed_at >= v_start
+        ),
+        'lost', (
+          SELECT count(*) FROM deals d
+          WHERE d.pipeline_id = pl.id AND d.status = 'lost' AND d.closed_at >= v_start
+        ),
+        'avgDaysToWin', (
+          SELECT avg(extract(epoch FROM d.closed_at - d.created_at) / 86400.0) FROM deals d
+          WHERE d.pipeline_id = pl.id AND d.status = 'won' AND d.closed_at >= v_start
+        ),
+        'idleDeals', (
+          SELECT count(*) FROM deals d
+          WHERE d.pipeline_id = pl.id AND d.status = 'open' AND d.updated_at < v_now - interval '7 days'
+        )
+      ))
+      FROM pipelines pl
+      WHERE pl.account_id = v_account
+    ), '[]'::jsonb)
   ) INTO v_pipeline;
 
   SELECT jsonb_build_object(
