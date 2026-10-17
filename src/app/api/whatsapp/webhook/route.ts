@@ -273,6 +273,33 @@ export async function POST(request: Request) {
   return NextResponse.json({ status: 'received' }, { status: 200 })
 }
 
+async function resolveAccountForPhoneNumber(
+  phoneNumberId: string | undefined
+): Promise<string | null> {
+  if (!phoneNumberId) return null
+  const { data, error } = await supabaseAdmin()
+    .from('whatsapp_config')
+    .select('account_id')
+    .eq('phone_number_id', phoneNumberId)
+
+  if (error) {
+    console.error('Error resolving account for status update:', phoneNumberId, error)
+    return null
+  }
+  if (!data || data.length !== 1) {
+    console.error(
+      `Status update for phone_number_id ${phoneNumberId} matched ${data?.length ?? 0} configs; message statuses skipped`
+    )
+    return null
+  }
+  return data[0].account_id
+}
+
+function metaTimestampToIso(timestamp: string): string | null {
+  const seconds = Number.parseInt(timestamp, 10)
+  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null
+}
+
 async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
   if (!body.entry) return
 
@@ -377,33 +404,6 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
       }
     }
   }
-}
-
-async function resolveAccountForPhoneNumber(
-  phoneNumberId: string | undefined
-): Promise<string | null> {
-  if (!phoneNumberId) return null
-  const { data, error } = await supabaseAdmin()
-    .from('whatsapp_config')
-    .select('account_id')
-    .eq('phone_number_id', phoneNumberId)
-
-  if (error) {
-    console.error('Error resolving account for status update:', phoneNumberId, error)
-    return null
-  }
-  if (!data || data.length !== 1) {
-    console.error(
-      `Status update for phone_number_id ${phoneNumberId} matched ${data?.length ?? 0} configs; message statuses skipped`
-    )
-    return null
-  }
-  return data[0].account_id
-}
-
-function metaTimestampToIso(timestamp: string): string | null {
-  const seconds = Number.parseInt(timestamp, 10)
-  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null
 }
 
 // The happy-path status ladder — pending → sent → delivered → read →
