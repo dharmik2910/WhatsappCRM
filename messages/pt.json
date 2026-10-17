@@ -1221,6 +1221,7 @@
       "statusHandedOff": "Transferida",
       "statusTimedOut": "Tempo esgotado",
       "statusPaused": "Pausada pelo agente",
+      "statusCancelled": "Cancelada",
       "statusFailed": "Falhou"
     },
     "builder": {
@@ -2381,6 +2382,7 @@
       "entryMissing": "O nó de entrada \"{id}\" não existe.",
       "duplicateNodeKey": "node_key duplicado: \"{key}\".",
       "unreachable": "O nó \"{key}\" não pode ser alcançado a partir do nó de entrada.",
+      "autoAdvanceCycle": "Os nós {keys} voltam uns para os outros sem esperar pelo cliente, então o fluxo continuaria enviando mensagens. Adicione uma etapa de botões, lista ou pergunta ao loop, ou interrompa-o.",
       "keywordsRequired": "Gatilhos por palavra-chave precisam de pelo menos uma palavra-chave.",
       "blankKeywords": "{count} {count, plural, =1 {palavra-chave está em branco} other {palavras-chave estão em branco}} — elas não vão corresponder a nada.",
       "startNeedsNext": "O nó Início precisa apontar para um próximo nó.",
@@ -2634,6 +2636,7 @@
     "flows": {
       "statusInvalid": "O status deve ser 'draft', 'active' ou 'archived'",
       "cannotActivate": "Não é possível ativar o fluxo — corrija os problemas abaixo primeiro.",
+      "cannotSaveActive": "Este fluxo está ativo, então não pode ser salvo com estes problemas. Corrija-os ou pause o fluxo primeiro.",
       "nameEmpty": "O nome não pode ficar vazio",
       "unknownTemplate": "Modelo de fluxo desconhecido \"{slug}\"",
       "insertFailed": "falha ao criar o fluxo",
