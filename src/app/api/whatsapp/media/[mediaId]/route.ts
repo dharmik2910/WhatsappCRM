@@ -4,6 +4,7 @@ import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
 import { decrypt } from '@/lib/whatsapp/encryption'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
+import { mediaProxyHeaders } from '@/lib/media/proxy-response-headers'
 
 const t = getT('Api')
 
@@ -82,10 +83,7 @@ export async function GET(
 
     return new Response(new Uint8Array(buffer), {
       status: 200,
-      headers: {
-        'Content-Type': contentType || mediaInfo.mimeType || 'application/octet-stream',
-        'Cache-Control': 'public, max-age=86400',
-      },
+      headers: mediaProxyHeaders(mediaId, contentType || mediaInfo.mimeType),
     })
   } catch (error) {
     console.error('Error in WhatsApp media GET:', error)
