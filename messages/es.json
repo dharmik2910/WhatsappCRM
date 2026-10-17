@@ -1222,6 +1222,7 @@
       "statusHandedOff": "Transferida",
       "statusTimedOut": "Tiempo agotado",
       "statusPaused": "Pausada por el agente",
+      "statusCancelled": "Cancelada",
       "statusFailed": "Fallida"
     },
     "builder": {
@@ -2387,6 +2388,7 @@
       "entryMissing": "El nodo de entrada \"{id}\" no existe.",
       "duplicateNodeKey": "node_key duplicado: \"{key}\".",
       "unreachable": "El nodo \"{key}\" no es accesible desde el nodo de entrada.",
+      "autoAdvanceCycle": "Los nodos {keys} vuelven unos a otros sin esperar al cliente, así que el flujo seguiría enviando mensajes. Añade un paso de botones, lista o pregunta al bucle, o rómpelo.",
       "keywordsRequired": "Los disparadores por palabra clave necesitan al menos una palabra clave.",
       "blankKeywords": "{count} {count, plural, =1 {palabra clave está vacía} other {palabras clave están vacías}}: no coincidirán con nada.",
       "startNeedsNext": "El nodo Inicio debe apuntar a un nodo siguiente.",
@@ -2642,6 +2644,7 @@
     "flows": {
       "statusInvalid": "El estado debe ser 'draft', 'active' o 'archived'",
       "cannotActivate": "No se puede activar el flujo: primero corrige los problemas de abajo.",
+      "cannotSaveActive": "Este flujo está activo, así que no se puede guardar con estos problemas. Corrígelos o pausa el flujo primero.",
       "nameEmpty": "El nombre no puede estar vacío",
       "unknownTemplate": "Plantilla de flujo desconocida \"{slug}\"",
       "insertFailed": "error al crear el flujo",

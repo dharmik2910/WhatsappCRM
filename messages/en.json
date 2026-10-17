@@ -1222,6 +1222,7 @@
       "statusHandedOff": "Handed off",
       "statusTimedOut": "Timed out",
       "statusPaused": "Paused by agent",
+      "statusCancelled": "Cancelled",
       "statusFailed": "Failed"
     },
     "builder": {
@@ -2387,6 +2388,7 @@
       "entryMissing": "Entry node \"{id}\" doesn't exist.",
       "duplicateNodeKey": "Duplicate node_key \"{key}\".",
       "unreachable": "Node \"{key}\" is unreachable from the entry node.",
+      "autoAdvanceCycle": "Nodes {keys} loop back to each other without waiting for the customer, so the flow would keep sending messages. Add a buttons, list or question step to the loop, or break it.",
       "keywordsRequired": "Keyword triggers need at least one keyword.",
       "blankKeywords": "{count} {count, plural, =1 {keyword is} other {keywords are}} blank — they won't match anything.",
       "startNeedsNext": "Start node must point to a next node.",
@@ -2642,6 +2644,7 @@
     "flows": {
       "statusInvalid": "status must be one of 'draft' | 'active' | 'archived'",
       "cannotActivate": "Cannot activate flow — fix the issues below first.",
+      "cannotSaveActive": "This flow is live, so it can't be saved with these issues. Fix them or pause the flow first.",
       "nameEmpty": "name cannot be empty",
       "unknownTemplate": "Unknown template_slug \"{slug}\"",
       "insertFailed": "flow insert failed",
