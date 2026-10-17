@@ -71,24 +71,6 @@
     "retry": "Tentar novamente"
   },
   "Dashboard": {
-    "page": {
-      "title": "Painel",
-      "description": "Métricas ao vivo de conversas, contatos, negócios, disparos e automações.",
-      "activeConversations": "Conversas ativas",
-      "newContactsToday": "Novos contatos hoje",
-      "openDealsValue": "Valor dos negócios abertos",
-      "messagesSentToday": "Mensagens enviadas hoje",
-      "newTodayVsYesterday": "novos hoje vs. ontem",
-      "vsYesterday": "vs. ontem",
-      "openDeals": "{count} {count, plural, =1 {negócio aberto} other {negócios abertos}}",
-      "noChange": "Sem alteração {suffix}"
-    },
-    "quickActions": {
-      "newContact": "Novo contato",
-      "newDeal": "Novo negócio",
-      "newBroadcast": "Novo disparo",
-      "newAutomation": "Nova automação"
-    },
     "activityFeed": {
       "title": "Atividade recente",
       "viewAll": "Ver tudo →",
@@ -102,6 +84,7 @@
       "timeD": "há {day}d",
       "items": {
         "newMessage": "Nova mensagem de {who}",
+        "newMessages": "{who} enviou {count} mensagens",
         "newContact": "Novo contato: {name}",
         "dealInStage": "Negócio \"{title}\" em {stage}",
         "dealUpdated": "Negócio \"{title}\" atualizado",
@@ -121,39 +104,228 @@
         "automationFallback": "Automação"
       }
     },
-    "conversationsChart": {
-      "title": "Conversas ao longo do tempo",
-      "description": "Volume diário de mensagens por direção",
-      "days": "{count} dias",
-      "noActivity": "Nenhuma atividade de mensagens neste período",
-      "noActivityHint": "Envie ou receba mensagens para começar a preencher este gráfico.",
-      "incoming": "Recebidas",
-      "outgoing": "Enviadas",
-      "tooltipIncoming": "{count} recebidas",
-      "tooltipOutgoing": "{count} enviadas",
-      "ariaLabel": "Conversas por dia"
-    },
-    "pipelineDonut": {
-      "title": "Valor do pipeline",
-      "description": "Negócios abertos por etapa",
-      "noOpenDeals": "Nenhum negócio aberto ainda",
-      "noOpenDealsHint": "Crie negócios em Pipelines para ver a divisão por etapa aqui.",
-      "dealCount": "{count} {count, plural, =1 {negócio} other {negócios}}",
-      "total": "Total",
-      "ariaLabel": "Valor do pipeline por etapa"
-    },
-    "responseTimeChart": {
-      "title": "Tempo médio da primeira resposta",
-      "description": "Minutos para responder à primeira mensagem sem resposta de um cliente, por dia da semana",
-      "target": "meta {minutes}min",
-      "thisWeek": "Esta semana:",
-      "lastWeek": "Semana passada:",
-      "noReplies": "Nenhuma resposta registrada ainda",
-      "noRepliesHint": "Este gráfico é preenchido conforme você responde às mensagens dos clientes.",
-      "avgMinutes": "Média em minutos"
-    },
     "emptyState": {
       "title": "Ainda não há dados suficientes"
+    },
+    "overview": {
+      "loadFailed": "Não foi possível carregar o painel.",
+      "retry": "Tentar novamente",
+      "header": {
+        "greeting": {
+          "morning": "Bom dia, {name}",
+          "afternoon": "Boa tarde, {name}",
+          "evening": "Boa noite, {name}"
+        },
+        "greetingNoName": {
+          "morning": "Bom dia",
+          "afternoon": "Boa tarde",
+          "evening": "Boa noite"
+        },
+        "contextWaiting": "{count, plural, =1 {1 cliente aguarda resposta,} other {# clientes aguardam resposta,}} o mais antigo há {wait}.",
+        "contextClear": "Ninguém está aguardando resposta agora.",
+        "contextSetup": "Conclua a configuração para começar a receber mensagens do WhatsApp aqui.",
+        "rangeLabel": "Período",
+        "range": {
+          "1": "Hoje",
+          "7": "7 dias",
+          "30": "30 dias",
+          "90": "90 dias"
+        },
+        "new": "Novo",
+        "newContact": "Novo contato",
+        "newDeal": "Novo negócio",
+        "newBroadcast": "Novo disparo",
+        "newAutomation": "Nova automação"
+      },
+      "health": {
+        "title": "Saúde do número do WhatsApp",
+        "quality": {
+          "GREEN": "Qualidade: alta",
+          "YELLOW": "Qualidade: média",
+          "RED": "Qualidade: baixa",
+          "UNKNOWN": "Qualidade: sem avaliação"
+        },
+        "perDay": "{count}/dia",
+        "unlimited": "Sem limite diário",
+        "disconnected": "WhatsApp não conectado",
+        "unavailable": "Não foi possível verificar seu número"
+      },
+      "attention": {
+        "waiting": "Aguardando resposta",
+        "waitingMeta": "Mais antigo {wait} · {count} acima da meta",
+        "waitingNone": "Todos foram respondidos",
+        "unassigned": "Sem responsável",
+        "onlineNow": "{count, plural, =0 {Nenhum colega online} =1 {1 colega online} other {# colegas online}}",
+        "closing": "Janelas de resposta fechando",
+        "closingMeta": "As respostas gratuitas terminam em menos de 2 horas",
+        "failed": "Mensagens com falha",
+        "failedMeta": "Últimas 24 horas · ver motivo"
+      },
+      "failedDialog": {
+        "title": "Mensagens com falha",
+        "description": "Mensagens que o WhatsApp não entregou nas últimas 24 horas.",
+        "empty": "Nenhuma mensagem com falha nas últimas 24 horas.",
+        "unknownContact": "Contato desconhecido",
+        "unknownReason": "O WhatsApp não informou o motivo.",
+        "reasonWithCode": "{reason} (erro {code})",
+        "showingLatest": "Mostrando as {shown} mais recentes de {total}."
+      },
+      "kpi": {
+        "newConversations": "Novas conversas",
+        "newConversationsInfo": "Conversas iniciadas neste período.",
+        "medianReply": "Mediana da primeira resposta",
+        "medianReplyInfo": "Tempo típico entre a primeira mensagem sem resposta de um cliente e a resposta de um colega. Respostas da IA e de automações não contam.",
+        "resolved": "Resolvidas",
+        "resolvedInfo": "Conversas fechadas neste período.",
+        "dealsWon": "Negócios ganhos",
+        "dealsWonInfo": "Negócios marcados como ganhos neste período e seu valor total.",
+        "readRate": "Taxa de leitura dos disparos",
+        "readRateInfo": "Mensagens lidas divididas pelas entregues, nos disparos enviados neste período.",
+        "readOfDelivered": "{read} lidas de {delivered} entregues",
+        "noBroadcasts": "Nenhum disparo neste período",
+        "none": "—",
+        "vsPrevious": {
+          "1": "vs ontem",
+          "7": "vs 7 dias anteriores",
+          "30": "vs 30 dias anteriores",
+          "90": "vs 90 dias anteriores"
+        },
+        "noComparison": "Sem alteração",
+        "new": "Novo",
+        "better": "Melhor que antes",
+        "worse": "Pior que antes",
+        "unchanged": "Sem alteração",
+        "target": "Meta {minutes} min",
+        "targetMax": "{minutes} min"
+      },
+      "volume": {
+        "title": "Volume de mensagens",
+        "description": "Mensagens recebidas e enviadas",
+        "hoursDescription": "Média de mensagens recebidas por hora do dia",
+        "byDay": "Por dia",
+        "byHour": "Por hora",
+        "busiestHours": "Horários de pico",
+        "incoming": "Recebidas",
+        "outgoing": "Enviadas",
+        "averageIncoming": "Média recebida",
+        "perDay": "Recebidas por dia",
+        "perHour": "Recebidas por hora",
+        "busiestDay": "Dia mais movimentado",
+        "busiestHour": "Hora mais movimentada",
+        "peakHour": "Hora mais movimentada",
+        "secondPeak": "Segunda mais movimentada",
+        "none": "—",
+        "empty": "Nenhuma mensagem neste período",
+        "emptyHint": "As mensagens aparecem aqui quando os clientes escrevem para você."
+      },
+      "queue": {
+        "title": "Fila de respostas",
+        "description": "Quem espera há mais tempo primeiro",
+        "openInbox": "Abrir caixa de entrada",
+        "empty": "Tudo em dia",
+        "emptyHint": "Nenhum cliente está aguardando resposta.",
+        "unknownContact": "Contato desconhecido",
+        "noPreview": "Sem prévia",
+        "windowLeft": "Restam {time} para responder grátis",
+        "handedOff": "Transferida pela IA",
+        "assigned": "Atribuída",
+        "unassigned": "Sem responsável"
+      },
+      "pipeline": {
+        "title": "Pipeline",
+        "description": "Negócios abertos por etapa",
+        "link": "Pipelines",
+        "choosePipeline": "Escolha um pipeline",
+        "deals": "{count, plural, =1 {1 negócio} other {# negócios}}",
+        "open": "Em aberto",
+        "winRate": "Taxa de ganho",
+        "avgToWin": "Tempo médio até ganhar",
+        "days": "{count, plural, =1 {1 dia} other {# dias}}",
+        "none": "—",
+        "idle": "{count, plural, =1 {1 negócio aberto está} other {# negócios abertos estão}} sem atividade há 7 dias ou mais",
+        "empty": "Nenhum negócio aberto",
+        "emptyHint": "Crie negócios em Pipelines para vê-los aqui."
+      },
+      "team": {
+        "title": "Equipe",
+        "description": "Respostas neste período",
+        "link": "Membros",
+        "member": "Membro",
+        "open": "Abertas",
+        "replies": "Respostas",
+        "median": "Mediana de resposta",
+        "teammate": "Colega",
+        "ai": "Agente de IA",
+        "none": "—",
+        "presence": {
+          "online": "Online",
+          "away": "Ausente",
+          "offline": "Offline"
+        }
+      },
+      "campaigns": {
+        "title": "Campanhas e automações",
+        "description": "Neste período",
+        "link": "Disparos",
+        "sentAt": "{date} · {count, plural, =1 {1 destinatário} other {# destinatários}}",
+        "delivered": "Entregues",
+        "read": "Lidas",
+        "replied": "Respondidas",
+        "failed": "Com falha",
+        "noBroadcast": "Nenhum disparo enviado ainda.",
+        "automations": "{count, plural, =1 {Automações · 1 execução} other {Automações · # execuções}}",
+        "noRuns": "Sem execuções",
+        "succeeded": "{percent} com sucesso",
+        "flows": "Fluxos",
+        "flowNamed": "Fluxo “{name}”",
+        "flowFailed": "{count, plural, =1 {1 execução com falha} other {# execuções com falha}}",
+        "flowsOk": "Nenhuma execução com falha",
+        "aiReplies": "{count, plural, =1 {Respostas da IA · 1} other {Respostas da IA · #}}",
+        "aiMedian": "Mediana {time}",
+        "templates": "{count, plural, =1 {Modelos · 1 aprovado} other {Modelos · # aprovados}}",
+        "templatesRejected": "{count, plural, =1 {1 rejeitado} other {# rejeitados}}",
+        "templatesOk": "Nenhum rejeitado",
+        "none": "—"
+      },
+      "setup": {
+        "title": "Configure sua conta",
+        "progress": "{done} de {total} concluídos",
+        "doneLabel": "(concluído)",
+        "todoLabel": "(pendente)",
+        "steps": {
+          "whatsapp": {
+            "title": "Conecte seu número do WhatsApp",
+            "description": "Vincule o número para o qual seus clientes escrevem.",
+            "action": "Conectar"
+          },
+          "contacts": {
+            "title": "Adicione seus contatos",
+            "description": "Importe um CSV, ou os contatos são adicionados quando escrevem para você.",
+            "action": "Adicionar contatos"
+          },
+          "template": {
+            "title": "Aprove um modelo de mensagem",
+            "description": "Ele é necessário para escrever a quem não falou com você nas últimas 24 horas.",
+            "action": "Criar modelo"
+          },
+          "teammate": {
+            "title": "Convide um colega",
+            "description": "Compartilhe a caixa de entrada e atribua conversas.",
+            "action": "Convidar"
+          }
+        },
+        "previewTitle": "Seus números vão aparecer aqui",
+        "previewHint": "Quando os clientes começarem a escrever, esta página mostra quem está esperando, a rapidez das respostas da equipe e como estão seus negócios e campanhas.",
+        "previewAction": "Abrir caixa de entrada"
+      },
+      "duration": {
+        "seconds": "{value} s",
+        "minutes": "{value} min",
+        "hours": "{value} h {remainder} min",
+        "hoursOnly": "{value} h",
+        "days": "{value} d {remainder} h",
+        "daysOnly": "{value} d"
+      }
     }
   },
   "Inbox": {
@@ -164,6 +336,9 @@
       "searchPlaceholder": "Buscar conversas...",
       "filterAll": "Todas",
       "filterUnread": "Não lidas",
+      "filterWaiting": "Aguardando resposta",
+      "filterUnassigned": "Sem responsável",
+      "filterExpiring": "Janela fechando",
       "filterOpen": "Abertas",
       "filterPending": "Pendentes",
       "filterClosed": "Fechadas",
@@ -1787,6 +1962,7 @@
       "quick-replies": "Respostas rápidas",
       "fields": "Campos e tags",
       "deals": "Negócios e moeda",
+      "inbox": "Caixa de entrada",
       "members": "Membros da equipe",
       "api": "Chaves de API"
     },
@@ -1936,6 +2112,21 @@
       "saving": "Salvando...",
       "saveFailed": "Falha ao salvar a moeda padrão",
       "saveSuccess": "Moeda padrão atualizada"
+    },
+    "inbox": {
+      "title": "Caixa de entrada",
+      "description": "Como o painel mede o tempo de resposta da sua equipe.",
+      "replyTarget": "Meta de tempo de resposta",
+      "replyTargetDesc": "O painel destaca as conversas que esperam mais do que isso pela primeira resposta e compara sua mediana de resposta com essa meta.",
+      "minutesLabel": "Minutos",
+      "hint": "Um número inteiro de 1 a 1440 (24 horas).",
+      "invalid": "Informe um número inteiro de 1 a 1440.",
+      "adminOnlyHint": "Somente administradores da conta podem alterar a meta.",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "saveFailed": "Não foi possível salvar a meta de tempo de resposta",
+      "saveSuccess": "Meta de tempo de resposta atualizada",
+      "loadFailed": "Não foi possível carregar a meta de tempo de resposta"
     },
     "aiConfig": {
       "title": "Configuração do agente",

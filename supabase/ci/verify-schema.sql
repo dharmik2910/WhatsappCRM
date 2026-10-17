@@ -149,6 +149,20 @@ BEGIN
       'a public column default still calls uuid-ossp; use gen_random_uuid() so a fresh hosted db push does not hit 42883';
   END IF;
 
+  IF to_regprocedure('public.dashboard_overview(integer,text)') IS NULL THEN
+    RAISE EXCEPTION 'public.dashboard_overview(integer, text) is missing — migration 059 did not apply';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'messages_track_conversation_times') THEN
+    RAISE EXCEPTION 'messages_track_conversation_times trigger is missing — migration 059 did not apply';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'conversations_stamp_closed_at')
+     OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'deals_stamp_closed_at') THEN
+    RAISE EXCEPTION 'closed_at triggers are missing — migration 059 did not apply';
+  END IF;
+  IF has_function_privilege('anon', 'public.dashboard_overview(integer,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon can execute dashboard_overview — migration 059 grants are wrong';
+  END IF;
+
   RAISE NOTICE 'schema verification passed';
 END
 $$;
