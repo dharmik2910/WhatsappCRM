@@ -2330,7 +2330,9 @@
       "contactNotFound": "연락처를 찾을 수 없습니다",
       "tagNotFound": "태그를 찾을 수 없습니다",
       "addFailed": "연락처 태그를 추가하지 못했습니다: {message}",
-      "removeFailed": "연락처 태그를 제거하지 못했습니다: {message}"
+      "removeFailed": "연락처 태그를 제거하지 못했습니다: {message}",
+      "invalidContactId": "연락처 ID는 UUID여야 합니다",
+      "invalidTagId": "태그 ID는 UUID여야 합니다"
     },
     "auth": {
       "unauthorized": "인증되지 않았습니다",

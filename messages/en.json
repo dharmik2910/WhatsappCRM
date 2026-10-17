@@ -2330,7 +2330,9 @@
       "contactNotFound": "Contact not found",
       "tagNotFound": "Tag not found",
       "addFailed": "Failed to add contact tag: {message}",
-      "removeFailed": "Failed to remove contact tag: {message}"
+      "removeFailed": "Failed to remove contact tag: {message}",
+      "invalidContactId": "Contact id must be a UUID",
+      "invalidTagId": "Tag id must be a UUID"
     },
     "auth": {
       "unauthorized": "Unauthorized",

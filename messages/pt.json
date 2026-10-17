@@ -2330,7 +2330,9 @@
       "contactNotFound": "Contato não encontrado",
       "tagNotFound": "Tag não encontrada",
       "addFailed": "Falha ao adicionar tag ao contato: {message}",
-      "removeFailed": "Falha ao remover tag do contato: {message}"
+      "removeFailed": "Falha ao remover tag do contato: {message}",
+      "invalidContactId": "O ID do contato deve ser um UUID",
+      "invalidTagId": "O ID da tag deve ser um UUID"
     },
     "auth": {
       "unauthorized": "Não autorizado",
