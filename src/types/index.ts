@@ -177,6 +177,9 @@ export interface Conversation {
   last_message_text?: string;
   last_message_at?: string;
   unread_count: number;
+  last_inbound_at?: string | null;
+  last_outbound_at?: string | null;
+  closed_at?: string | null;
   created_at: string;
   updated_at: string;
   contact?: Contact;

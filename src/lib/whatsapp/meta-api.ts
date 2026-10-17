@@ -28,6 +28,13 @@ export interface MetaPhoneInfo {
   quality_rating?: string
 }
 
+export interface MetaPhoneHealth {
+  id: string
+  display_phone_number?: string
+  quality_rating?: string
+  whatsapp_business_manager_messaging_limit?: string
+}
+
 interface MetaErrorResponse {
   error?: {
     message?: string
@@ -127,6 +134,20 @@ export async function verifyPhoneNumber(
 ): Promise<MetaPhoneInfo> {
   const { phoneNumberId, accessToken } = args
   const url = `${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,verified_name,quality_rating`
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Meta API error: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function getPhoneNumberHealth(
+  args: VerifyPhoneNumberArgs
+): Promise<MetaPhoneHealth> {
+  const { phoneNumberId, accessToken } = args
+  const url = `${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,quality_rating,whatsapp_business_manager_messaging_limit`
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })

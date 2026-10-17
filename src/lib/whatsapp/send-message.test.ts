@@ -296,6 +296,29 @@ describe('sendMessageToConversation — template persistence (#483)', () => {
     );
   });
 
+  it('records which teammate sent the message', async () => {
+    const captured: CapturedWrites = {};
+    await sendMessageToConversation(sendPathDb([TEMPLATE_ROW], captured), 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'template',
+      templateName: 'order_update',
+      templateMessageParams: { body: ['A1', 'Friday'] },
+      senderId: 'user-42',
+    });
+    expect(captured.message?.sender_id).toBe('user-42');
+  });
+
+  it('leaves sender_id empty when no teammate is known', async () => {
+    const captured: CapturedWrites = {};
+    await sendMessageToConversation(sendPathDb([TEMPLATE_ROW], captured), 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'template',
+      templateName: 'order_update',
+      templateMessageParams: { body: ['A1', 'Friday'] },
+    });
+    expect(captured.message?.sender_id).toBeNull();
+  });
+
   it('reads body values out of the structured params shape too', async () => {
     const captured: CapturedWrites = {};
     await sendMessageToConversation(sendPathDb([TEMPLATE_ROW], captured), 'acct-1', {
