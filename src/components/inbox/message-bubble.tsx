@@ -45,7 +45,6 @@ interface MessageBubbleProps {
   /** Pre-computed quote info for messages that reply to another. */
   reply?: { authorLabel: string; preview: string } | null;
   reactions?: MessageReaction[];
-  currentUserId?: string;
   onToggleReaction?: (emoji: string) => void;
   /**
    * Opens the thread's media viewer on this message. Only images and videos
@@ -368,7 +367,6 @@ export function MessageBubble({
   template = null,
   reply,
   reactions,
-  currentUserId,
   onToggleReaction,
   onOpenMedia,
 }: MessageBubbleProps) {
@@ -454,7 +452,6 @@ export function MessageBubble({
       {reactions && reactions.length > 0 && onToggleReaction && (
         <MessageReactions
           reactions={reactions}
-          currentUserId={currentUserId}
           onToggle={onToggleReaction}
         />
       )}

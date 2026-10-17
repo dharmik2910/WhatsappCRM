@@ -41,6 +41,7 @@ import {
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils';
 import { resolveContactSendTarget } from '@/lib/whatsapp/wa-identity';
+import { applyPendingMessageStatuses } from '@/lib/whatsapp/message-status-sync';
 import type { MessageTemplate } from '@/types';
 import {
   resolveTemplateRow,
@@ -503,6 +504,8 @@ export async function sendMessageToConversation(
       500
     );
   }
+
+  await applyPendingMessageStatuses(supabaseAdmin(), accountId, waMessageId);
 
   const lastMessageText =
     messageType === 'interactive'

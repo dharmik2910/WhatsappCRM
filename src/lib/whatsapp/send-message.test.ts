@@ -193,6 +193,11 @@ vi.mock('@/lib/flows/admin-client', () => ({
   }),
 }));
 
+const applyPendingMessageStatuses = vi.hoisted(() => vi.fn(async () => []));
+vi.mock('@/lib/whatsapp/message-status-sync', () => ({
+  applyPendingMessageStatuses,
+}));
+
 interface CapturedWrites {
   message?: Record<string, unknown>;
   conversation?: Record<string, unknown>;
@@ -481,5 +486,24 @@ describe('sendMessageToConversation — BSUID recipients (#519)', () => {
         { conversationId: 'cv-1', messageType: 'text', contentText: 'hi' }
       )
     ).rejects.toThrow(/no phone number or WhatsApp user ID/);
+  });
+});
+
+describe('sendMessageToConversation — statuses that beat the insert', () => {
+  it('applies any status Meta delivered before the row existed', async () => {
+    applyPendingMessageStatuses.mockClear();
+
+    await sendMessageToConversation(
+      sendPathDb([], {}, { id: 'ct-1', phone: '+15551234567' }),
+      'acct-1',
+      { conversationId: 'cv-1', messageType: 'text', contentText: 'hi' }
+    );
+
+    expect(applyPendingMessageStatuses).toHaveBeenCalledTimes(1);
+    expect(applyPendingMessageStatuses).toHaveBeenCalledWith(
+      expect.anything(),
+      'acct-1',
+      'wamid.text'
+    );
   });
 });
