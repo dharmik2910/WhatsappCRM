@@ -61,6 +61,10 @@ import {
   templateNamesInMessages,
 } from "@/lib/whatsapp/template-message-view";
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
+import {
+  businessReactionOn,
+  withBusinessReaction,
+} from "@/lib/inbox/business-reaction";
 import { toast } from "sonner";
 
 interface ReplyDraft {
@@ -837,26 +841,13 @@ export function MessageThread({
       // stale closure. Snapshot stored for rollback on POST failure.
       setReactions((prev) => {
         snapshot = prev;
-        const own = prev.find(
-          (r) =>
-            r.message_id === messageId &&
-            r.actor_type === "agent" &&
-            r.actor_id === userId,
-        );
-        if (emoji === "") return own ? prev.filter((r) => r !== own) : prev;
-        if (own) return prev.map((r) => (r === own ? { ...own, emoji } : r));
-        return [
-          ...prev,
-          {
-            id: `temp-${Date.now()}`,
-            message_id: messageId,
-            conversation_id: convId,
-            actor_type: "agent",
-            actor_id: userId,
-            emoji,
-            created_at: new Date().toISOString(),
-          },
-        ];
+        return withBusinessReaction(prev, {
+          messageId,
+          conversationId: convId,
+          userId,
+          emoji,
+          now: new Date(),
+        });
       });
 
       try {
@@ -1159,15 +1150,10 @@ export function MessageThread({
                         }
                       : null;
                     const msgReactions = reactionsByMessageId.get(msg.id);
-                    // Toggle is computed at the call site — `msgReactions`
-                    // and `user?.id` are already in scope, no extra hook.
+                    // Toggle is computed at the call site — no extra hook.
                     const handlePillToggle = (emoji: string) => {
-                      const own = msgReactions?.find(
-                        (r) =>
-                          r.actor_type === "agent" &&
-                          r.actor_id === user?.id,
-                      );
-                      const next = own?.emoji === emoji ? "" : emoji;
+                      const current = businessReactionOn(msgReactions, msg.id);
+                      const next = current?.emoji === emoji ? "" : emoji;
                       void postReaction(msg.id, next);
                     };
                     return (
@@ -1188,7 +1174,6 @@ export function MessageThread({
                           }
                           reply={reply}
                           reactions={msgReactions}
-                          currentUserId={user?.id}
                           onToggleReaction={handlePillToggle}
                           onOpenMedia={handleMediaChange}
                         />
