@@ -1132,6 +1132,7 @@
         },
         "operandLabel": "Operando",
         "placeholderTime": "HH:mm-HH:mm",
+        "timezoneLabel": "Fuso horário",
         "placeholderContact": "nome / e-mail / empresa",
         "placeholderTag": "id da tag",
         "urlLabel": "URL",
@@ -1221,6 +1222,7 @@
       "statusHandedOff": "Transferida",
       "statusTimedOut": "Tempo esgotado",
       "statusPaused": "Pausada pelo agente",
+      "statusCancelled": "Cancelada",
       "statusFailed": "Falhou"
     },
     "builder": {
@@ -2329,7 +2331,9 @@
       "contactNotFound": "Contato não encontrado",
       "tagNotFound": "Tag não encontrada",
       "addFailed": "Falha ao adicionar tag ao contato: {message}",
-      "removeFailed": "Falha ao remover tag do contato: {message}"
+      "removeFailed": "Falha ao remover tag do contato: {message}",
+      "invalidContactId": "O ID do contato deve ser um UUID",
+      "invalidTagId": "O ID da tag deve ser um UUID"
     },
     "auth": {
       "unauthorized": "Não autorizado",
@@ -2365,6 +2369,9 @@
       "pausedWhileWaitingForReply": "automação pausada enquanto aguardava resposta",
       "noReplyWithin24h": "sem resposta em 24h",
       "parkForReplyFailed": "não foi possível aguardar a resposta: {message}",
+      "pausedWhileWaiting": "automação pausada durante a espera",
+      "stepRemovedWhileWaiting": "a etapa em que esta execução aguardava foi removida ou saiu do seu ramo",
+      "scheduleWaitFailed": "não foi possível agendar a espera: {message}",
       "destinationNotAllowed": "send_webhook: destino não permitido",
       "webhookStatus": "o webhook retornou {status}",
       "conversationNotInAccount": "a conversa não pertence a esta conta",
@@ -2381,6 +2388,7 @@
       "entryMissing": "O nó de entrada \"{id}\" não existe.",
       "duplicateNodeKey": "node_key duplicado: \"{key}\".",
       "unreachable": "O nó \"{key}\" não pode ser alcançado a partir do nó de entrada.",
+      "autoAdvanceCycle": "Os nós {keys} voltam uns para os outros sem esperar pelo cliente, então o fluxo continuaria enviando mensagens. Adicione uma etapa de botões, lista ou pergunta ao loop, ou interrompa-o.",
       "keywordsRequired": "Gatilhos por palavra-chave precisam de pelo menos uma palavra-chave.",
       "blankKeywords": "{count} {count, plural, =1 {palavra-chave está em branco} other {palavras-chave estão em branco}} — elas não vão corresponder a nada.",
       "startNeedsNext": "O nó Início precisa apontar para um próximo nó.",
@@ -2445,6 +2453,8 @@
       "waitUnitInvalid": "a unidade de espera deve ser minutos, horas ou dias",
       "conditionSubjectRequired": "o assunto da condição é obrigatório",
       "conditionOperandRequired": "o operando da condição é obrigatório",
+      "conditionValueRequired": "o valor da condição é obrigatório",
+      "conditionTimezoneInvalid": "o fuso horário da condição não é um fuso IANA válido",
       "webhookUrlRequired": "a URL do webhook é obrigatória",
       "webhookUrlScheme": "a URL do webhook deve usar http ou https",
       "webhookUrlInvalid": "a URL do webhook não é uma URL válida",
@@ -2634,6 +2644,7 @@
     "flows": {
       "statusInvalid": "O status deve ser 'draft', 'active' ou 'archived'",
       "cannotActivate": "Não é possível ativar o fluxo — corrija os problemas abaixo primeiro.",
+      "cannotSaveActive": "Este fluxo está ativo, então não pode ser salvo com estes problemas. Corrija-os ou pause o fluxo primeiro.",
       "nameEmpty": "O nome não pode ficar vazio",
       "unknownTemplate": "Modelo de fluxo desconhecido \"{slug}\"",
       "insertFailed": "falha ao criar o fluxo",

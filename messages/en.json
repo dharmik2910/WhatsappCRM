@@ -1132,6 +1132,7 @@
         },
         "operandLabel": "Operand",
         "placeholderTime": "HH:mm-HH:mm",
+        "timezoneLabel": "Time zone",
         "placeholderContact": "name / email / company",
         "placeholderTag": "tag id",
         "urlLabel": "URL",
@@ -1221,6 +1222,7 @@
       "statusHandedOff": "Handed off",
       "statusTimedOut": "Timed out",
       "statusPaused": "Paused by agent",
+      "statusCancelled": "Cancelled",
       "statusFailed": "Failed"
     },
     "builder": {
@@ -2329,7 +2331,9 @@
       "contactNotFound": "Contact not found",
       "tagNotFound": "Tag not found",
       "addFailed": "Failed to add contact tag: {message}",
-      "removeFailed": "Failed to remove contact tag: {message}"
+      "removeFailed": "Failed to remove contact tag: {message}",
+      "invalidContactId": "Contact id must be a UUID",
+      "invalidTagId": "Tag id must be a UUID"
     },
     "auth": {
       "unauthorized": "Unauthorized",
@@ -2365,6 +2369,9 @@
       "pausedWhileWaitingForReply": "automation paused while waiting for reply",
       "noReplyWithin24h": "no reply within 24h",
       "parkForReplyFailed": "could not park for reply: {message}",
+      "pausedWhileWaiting": "automation paused while waiting",
+      "stepRemovedWhileWaiting": "the step this run was waiting at was removed or moved out of its branch",
+      "scheduleWaitFailed": "could not schedule the wait: {message}",
       "destinationNotAllowed": "send_webhook: destination not allowed",
       "webhookStatus": "webhook returned {status}",
       "conversationNotInAccount": "conversation does not belong to this account",
@@ -2381,6 +2388,7 @@
       "entryMissing": "Entry node \"{id}\" doesn't exist.",
       "duplicateNodeKey": "Duplicate node_key \"{key}\".",
       "unreachable": "Node \"{key}\" is unreachable from the entry node.",
+      "autoAdvanceCycle": "Nodes {keys} loop back to each other without waiting for the customer, so the flow would keep sending messages. Add a buttons, list or question step to the loop, or break it.",
       "keywordsRequired": "Keyword triggers need at least one keyword.",
       "blankKeywords": "{count} {count, plural, =1 {keyword is} other {keywords are}} blank — they won't match anything.",
       "startNeedsNext": "Start node must point to a next node.",
@@ -2445,6 +2453,8 @@
       "waitUnitInvalid": "wait unit must be minutes, hours, or days",
       "conditionSubjectRequired": "condition subject is required",
       "conditionOperandRequired": "condition operand is required",
+      "conditionValueRequired": "condition value is required",
+      "conditionTimezoneInvalid": "condition time zone is not a valid IANA time zone",
       "webhookUrlRequired": "webhook URL is required",
       "webhookUrlScheme": "webhook URL must use http or https",
       "webhookUrlInvalid": "webhook URL is not a valid URL",
@@ -2634,6 +2644,7 @@
     "flows": {
       "statusInvalid": "status must be one of 'draft' | 'active' | 'archived'",
       "cannotActivate": "Cannot activate flow — fix the issues below first.",
+      "cannotSaveActive": "This flow is live, so it can't be saved with these issues. Fix them or pause the flow first.",
       "nameEmpty": "name cannot be empty",
       "unknownTemplate": "Unknown template_slug \"{slug}\"",
       "insertFailed": "flow insert failed",

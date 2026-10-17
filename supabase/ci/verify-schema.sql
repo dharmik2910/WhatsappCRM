@@ -56,10 +56,17 @@ BEGIN
   -- plain replay can't catch it). Assert the qualified form is what's
   -- actually installed.
   IF pg_get_functiondef(
-       'public.create_broadcast_with_recipients(uuid,uuid,text,text,text,integer,uuid[],jsonb[])'::regprocedure
+       'public.create_broadcast_with_recipients(uuid,uuid,text,text,text,integer,uuid[],jsonb)'::regprocedure
      ) NOT LIKE '%RETURNING id, broadcast_recipients.contact_id%' THEN
     RAISE EXCEPTION
       'create_broadcast_with_recipients still has the ambiguous RETURNING — migration 041 did not apply';
+  END IF;
+
+  IF to_regprocedure(
+       'public.create_broadcast_with_recipients(uuid,uuid,text,text,text,integer,uuid[],jsonb[])'
+     ) IS NOT NULL THEN
+    RAISE EXCEPTION
+      'the JSONB[] overload of create_broadcast_with_recipients still exists — migration 049 did not apply';
   END IF;
 
   -- The failure-reason columns (042) are only ever written by the
@@ -131,6 +138,15 @@ BEGIN
   IF to_regclass('public.idx_automation_pending_awaiting_reply') IS NULL THEN
     RAISE EXCEPTION
       'idx_automation_pending_awaiting_reply is missing — migration 045 did not apply';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND column_default LIKE '%uuid_generate_v%'
+  ) THEN
+    RAISE EXCEPTION
+      'a public column default still calls uuid-ossp; use gen_random_uuid() so a fresh hosted db push does not hit 42883';
   END IF;
 
   RAISE NOTICE 'schema verification passed';
